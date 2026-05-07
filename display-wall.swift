@@ -190,11 +190,25 @@ class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func updateFileLabel(_ url: URL?) {
         if let u = url {
-            fileLabel?.stringValue = u.lastPathComponent
+            fileLabel?.stringValue = u.path
             fileLabel?.toolTip = u.path
         } else {
-            fileLabel?.stringValue = "No video loaded — click Open…"
+            fileLabel?.stringValue = ""
             fileLabel?.toolTip = nil
+        }
+    }
+
+    @objc func pathSubmitted(_ sender: NSTextField) {
+        let raw = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return }
+        let expanded = (raw as NSString).expandingTildeInPath
+        let fileURL = URL(fileURLWithPath: expanded)
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            loadVideo(url: fileURL)
+            controlWindow.makeFirstResponder(nil)
+        } else {
+            NSSound.beep()
+            sender.toolTip = "File not found: \(fileURL.path)"
         }
     }
 
@@ -390,12 +404,17 @@ class Controller: NSObject, NSApplicationDelegate, NSWindowDelegate {
         cv.addSubview(label)
         timeLabel = label
 
-        // Filename row, just below the controls
-        let fl = NSTextField(labelWithString: "")
+        // Path input row, just below the controls
+        let fl = NSTextField(string: "")
+        fl.isEditable = true
+        fl.isBezeled = true
+        fl.bezelStyle = .roundedBezel
         fl.font = .systemFont(ofSize: 11)
-        fl.textColor = .secondaryLabelColor
+        fl.placeholderString = "Paste a video path and press Enter, or click Open…"
         fl.lineBreakMode = .byTruncatingMiddle
-        fl.frame = NSRect(x: 16, y: 138, width: size.width - 32, height: 16)
+        fl.target = self
+        fl.action = #selector(pathSubmitted(_:))
+        fl.frame = NSRect(x: 16, y: 134, width: size.width - 32, height: 22)
         fl.autoresizingMask = [.width]
         cv.addSubview(fl)
         fileLabel = fl
